@@ -1,0 +1,9 @@
+[package]
+name = "search-in-log"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+regex = "1.10.5"
+console = "0.15.8"
+clearscreen = "3.0.0"
