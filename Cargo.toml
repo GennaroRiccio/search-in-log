@@ -1,9 +1,13 @@
 [package]
 name = "search-in-log"
-version = "0.1.0"
+version = "0.3.1"
 edition = "2021"
 
 [dependencies]
 regex = "1.10.5"
 console = "0.15.8"
 clearscreen = "3.0.0"
+kdam = { version = "0.5.2", features = ["template", "spinner"] }
+fstream = "0.1.2"
+bat = "0.24.0"
+dialoguer = { version =  "0.11.0", features = ["fuzzy-select"] }
