@@ -35,7 +35,7 @@ fn get_file_row(file: &str) -> u64 {
     for _ in file.lines() {
         cnt = cnt + 1;
     }
-    return cnt;
+    cnt
 }
 // fn get_line_at(path: &Path, line_num: usize) -> Result<String, std::io::Error> {
 //     let file = File::open(path).expect("File non trovato o impossibile da aprire!");
@@ -46,7 +46,10 @@ fn get_file_row(file: &str) -> u64 {
 
 fn search(filename: &str, search_line: &str, n_file: u64) -> Result<String, std::io::Error> {
     let n_row = get_file_row(filename);
-    let file = File::open(filename)?;
+    let file = match File::open(filename){
+        Ok(f) => f,
+        Err(e) => return Err(e), };
+
     let file_res = format!("search_result_{}.log", n_file);
     let mut reader = BufReader::with_capacity(2048 * 2048, file);
     let mut line_numbers = VecDeque::new();
@@ -127,7 +130,7 @@ fn main() {
     }
     println!("{} {} Pulizia ricerca precedente:", style("[*]").bold().dim(), WASTE);
     let delete_log = get_res_files(env::current_dir().unwrap().display().to_string());
-        for dl in tqdm!(delete_log.iter()){
+    for dl in tqdm!(delete_log.iter()){
         fs::remove_file(dl).expect("Errore nella cancellazione file log!");
     }
 
@@ -147,7 +150,10 @@ fn main() {
             i += 1;
             search_text = args[2].to_string();
             file_name = path.display().to_string();
-            _ = search(&{ file_name }, &{ search_text }, i).expect("Errore lettura file");
+            _ =  match search(&{ file_name }, &{ search_text }, i){
+                Ok(_) => println!("Search Result End"),
+                Err(e) => eprintln!("{}", e),
+            }
         }
     }
     let curr_path = env::current_dir().unwrap().display().to_string();
