@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 use std::{env, fs};
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader,Read};
 use std::process::exit;
 use regex::Regex;
 use console::{style, Emoji};
@@ -9,6 +9,8 @@ use clearscreen;
 use kdam::{term, tqdm, BarExt, Spinner};
 use bat::{PagingMode, PrettyPrinter, WrappingMode};
 use dialoguer::{theme::ColorfulTheme, FuzzySelect};
+use encoding::all::ISO_8859_1;
+use encoding::{DecoderTrap, Encoding};
 
 extern crate fstream;
 
@@ -48,7 +50,19 @@ fn search(filename: &str, search_line: &str, n_file: u64) -> Result<String, std:
     let n_row = get_file_row(filename);
     let file = match File::open(filename){
         Ok(f) => f,
-        Err(e) => return Err(e), };
+        Err(_e) =>
+            {
+                let mut file = File::open(filename)?;
+
+                // Read the file into a byte vector
+                let mut byte_buffer = Vec::new();
+                file.read_to_end(&mut byte_buffer)?;
+
+                // Decode the bytes using the desired encoding (_e.g., ISO-8859-1)
+                let decoded_string = ISO_8859_1.decode(&byte_buffer, DecoderTrap::Strict).unwrap();
+                return Ok(decoded_string);
+            }
+    };
 
     let file_res = format!("search_result_{}.log", n_file);
     let mut reader = BufReader::with_capacity(2048 * 2048, file);
@@ -110,7 +124,7 @@ fn get_res_files(path: String) -> Vec<String> {
             }
         }
     }
-    return fvec;
+    fvec
 }
 
 fn main() {
@@ -150,8 +164,9 @@ fn main() {
             i += 1;
             search_text = args[2].to_string();
             file_name = path.display().to_string();
+            let curr_file = file_name.clone();
             _ =  match search(&{ file_name }, &{ search_text }, i){
-                Ok(_) => println!("Search Result End"),
+                Ok(_) => println!("Fine Ricerca nel file {}",curr_file),
                 Err(e) => eprintln!("{}", e),
             }
         }
