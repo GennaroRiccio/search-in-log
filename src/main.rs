@@ -1,3 +1,5 @@
+mod llma_analyze;
+
 use std::collections::VecDeque;
 use std::{env, fs};
 use std::fs::File;
@@ -11,6 +13,7 @@ use bat::{PagingMode, PrettyPrinter, WrappingMode};
 use dialoguer::{theme::ColorfulTheme, FuzzySelect};
 use encoding::all::ISO_8859_1;
 use encoding::{DecoderTrap, Encoding};
+use crate::llma_analyze::llma_analyze::search_analyze;
 
 extern crate fstream;
 
@@ -126,21 +129,24 @@ fn get_res_files(path: String) -> Vec<String> {
     }
     fvec
 }
-
-fn main() {
+#[tokio::main]
+async fn main() {
     clearscreen::clear().unwrap();
     term::init(false);
     term::hide_cursor().unwrap();
     let mut file_name;
     let mut search_text;
-    let args: Vec<String> = env::args().collect();
+    let mut args: Vec<String> = env::args().collect();
     println!("{}",BANNER);
     println!("search-in-log v{} by #GR (C) 2024 CippoLippo Enterprise ", env!("CARGO_PKG_VERSION"));
     println!();
 
     if args.len() == 1 {
         println!("Nessun paramentro specificato");
-        exit(1);
+        args.push(String::from("F:\\Source\\rust\\search-in-log\\test-logs"));
+        args.push(String::from("error"));
+        args.push(String::from("AI"));
+        // exit(1);
     }
     println!("{} {} Pulizia ricerca precedente:", style("[*]").bold().dim(), WASTE);
     let delete_log = get_res_files(env::current_dir().unwrap().display().to_string());
@@ -154,43 +160,51 @@ fn main() {
     println!("{} {} Percorso di ricerca: {}", style("[*]").bold().dim(), TRUCK, args[1].to_string());
     println!("{} {} String di ricerca: {}", style("[*]").bold().dim(), STAR, args[2].to_string());
     println!("{} {} Numero Files: {}", style("[*]").bold().dim(), NUMBER, n_file);
-
-    let mut i = 0;
-    for f in p_files {
-        let file = f;
-        let path = file.unwrap().path();
-        if path.is_file()
-        {
-            i += 1;
-            search_text = args[2].to_string();
+    if args[3].to_string().to_uppercase() == "AI"{
+        for f in p_files {
+            let file = f;
+            let path = file.unwrap().path();
             file_name = path.display().to_string();
-            let curr_file = file_name.clone();
-            _ =  match search(&{ file_name }, &{ search_text }, i){
-                Ok(_) => println!("Fine Ricerca nel file {}",curr_file),
-                Err(e) => eprintln!("{}", e),
+            let _ = search_analyze(file_name.as_str(), args[2].as_str()).await;
+        }
+    }else {
+        let mut i = 0;
+        for f in p_files {
+            let file = f;
+            let path = file.unwrap().path();
+            if path.is_file()
+            {
+                i += 1;
+                search_text = args[2].to_string();
+                file_name = path.display().to_string();
+                let curr_file = file_name.clone();
+                _ = match search(&{ file_name }, &{ search_text }, i) {
+                    Ok(_) => println!("Fine Ricerca nel file {}", curr_file),
+                    Err(e) => eprintln!("{}", e),
+                }
             }
         }
-    }
-    let curr_path = env::current_dir().unwrap().display().to_string();
-    let result_log = get_res_files(curr_path);
-    loop {
-        let selection = FuzzySelect::with_theme(&ColorfulTheme::default())
-            .with_prompt("Seleziona:")
-            .default(0)
-            .items(&result_log)
-            .interact()
-            .unwrap();
+        let curr_path = env::current_dir().unwrap().display().to_string();
+        let result_log = get_res_files(curr_path);
+        loop {
+            let selection = FuzzySelect::with_theme(&ColorfulTheme::default())
+                .with_prompt("Seleziona:")
+                .default(0)
+                .items(&result_log)
+                .interact()
+                .unwrap();
 
-        PrettyPrinter::new()
-            .input_file(&result_log[selection])
-            .language("json")
-            .line_numbers(true)
-            .grid(true)
-            .header(true)
-            .wrapping_mode(WrappingMode::Character)
-            .paging_mode(PagingMode::QuitIfOneScreen)
-            .print()
-            .unwrap();
+            PrettyPrinter::new()
+                .input_file(&result_log[selection])
+                .language("json")
+                .line_numbers(true)
+                .grid(true)
+                .header(true)
+                .wrapping_mode(WrappingMode::Character)
+                .paging_mode(PagingMode::QuitIfOneScreen)
+                .print()
+                .unwrap();
+        }
     }
 
 }
