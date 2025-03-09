@@ -4,7 +4,6 @@ use std::collections::VecDeque;
 use std::{env, fs};
 use std::fs::File;
 use std::io::{BufRead, BufReader,Read};
-use std::process::exit;
 use regex::Regex;
 use console::{style, Emoji};
 use clearscreen;

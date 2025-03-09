@@ -1,58 +1,53 @@
-use std::fs::{DirEntry, File, ReadDir};
-use std::io::{BufRead, BufReader, Read, Write};
+use langchain_rust::embedding::{
+     ollama::ollama_embedder::OllamaEmbedder,
+};
+use langchain_rust::vectorstore::VecStoreOptions;
 use langchain_rust::{
     schemas::Document,
-    vectorstore::{sqlite_vss::StoreBuilder, VecStoreOptions, VectorStore},
+    vectorstore::qdrant::{Qdrant, StoreBuilder},
+    vectorstore::VectorStore,
 };
-use langchain_rust::embedding::{
-    embedder_trait::Embedder, ollama::ollama_embedder::OllamaEmbedder,
-};
+use std::fs::{File};
+use std::io::{BufRead, BufReader, Write};
 
-pub async fn search_analyze(p_files: &str, search_text :&str){
-    let embedder  = OllamaEmbedder::default().with_model("nomic-embed-text");
-    let database_url = std::env::var("DATABASE_URL").unwrap_or("sqlite::memory:".to_string());
+pub async fn search_analyze(p_files: &str, _search_text: &str) {
+    let embedder = OllamaEmbedder::default().with_model("nomic-embed-text");
+    let client = Qdrant::from_url("http://localhost:6334").build().unwrap();
+
     // Initialize the Sqlite Vector Store
     let store = StoreBuilder::new()
         .embedder(embedder)
-        .connection_url(database_url)
-        .table("documents")
-        .vector_dimensions(1536)
+        .client(client)
+        .collection_name("langchain-rs")
         .build()
         .await
         .unwrap();
 
-    // Initialize the tables in the database. This is required to be done only once.
-    store.initialize()
-        .await
-        .unwrap();
-    let mut contents = String::new();
+    // let mut contents = String::new();
+    let file = File::open(p_files).unwrap();
+    let mut reader = BufReader::with_capacity(2048 * 2048, file);
 
-        let file = File::open(p_files).unwrap();
-
-        let mut reader = BufReader::with_capacity(2048 * 2048, file);
+    loop {
         let mut line = String::new();
-
-        loop{
-            let n = reader.read_line(&mut line).unwrap();
-            if n == 0 {
-                break;
-            }
-            contents.push_str(&line);
+        let n = reader.read_line(&mut line).unwrap();
+        if n == 0 {
+            break;
         }
-
-
-    let doc = Document::new(contents.as_str());
-    // let doc1 = Document::new(
-    //     "langchain-rust is a port of the langchain python library to rust and was written in 2024.",
-    // );
-    store
-        .add_documents(&vec![doc], &VecStoreOptions::default())
-        .await
-        .unwrap();
+        println!("Aggiungo linea :{}", line);
+        // contents.push_str(&line);
+        let doc = Document::new(line.as_str());
+        // let doc1 = Document::new(
+        //     "langchain-rust is a port of the langchain python library to rust and was written in 2024.",
+        // );
+        store
+            .add_documents(&vec![doc], &VecStoreOptions::default())
+            .await
+            .unwrap();
+    }
 
     std::io::stdout().flush().unwrap();
     let mut query = String::new();
-    print!("Query> ");
+    println!("Query> ");
     std::io::stdin().read_line(&mut query).unwrap();
 
     let results = store
